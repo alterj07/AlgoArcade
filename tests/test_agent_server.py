@@ -56,6 +56,17 @@ async def fresh_state() -> dict[str, Any] | None:
         return (await client.call_tool("get_state")).structured_content
 
 
+async def moved_and_untouched() -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    async with (
+        Client(PARAMS, raise_exceptions=True) as moving,
+        Client(PARAMS, raise_exceptions=True) as idle,
+    ):
+        await moving.call_tool("press", {"buttons": ["RIGHT"]})
+        moved = await moving.call_tool("get_state")
+        untouched = await idle.call_tool("get_state")
+    return moved.structured_content, untouched.structured_content
+
+
 def test_two_tools_and_press_matches_a_direct_backend_run() -> None:
     names, pressed, read_back = asyncio.run(tools_press_and_read())
     backend = FakeBackend()
@@ -94,3 +105,9 @@ def test_only_protocol_frames_reach_stdout_and_the_log_reaches_stderr() -> None:
     assert [json.loads(line)["jsonrpc"] for line in replies] == ["2.0"] * 3
     assert rest == ""
     assert "press ['A']" in stderr
+
+
+def test_two_servers_hold_independent_state() -> None:
+    moved, untouched = asyncio.run(moved_and_untouched())
+    assert moved != untouched
+    assert untouched == asdict(FakeReader().read(FakeBackend()))
