@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, get_args
 
 from mcp import Client, StdioServerParameters
@@ -13,6 +14,7 @@ from algoarcade.backends.fake import FakeBackend
 from algoarcade.games.fake import FakeReader
 
 PARAMS = StdioServerParameters(command=sys.executable, args=["-m", "algoarcade.agent.server"])
+MCP_JSON = Path(__file__).parents[1] / ".mcp.json"
 # Two steps right lands on the chest, A opens it. One press call is one decision.
 TO_THE_CHEST = ["RIGHT", "RIGHT", "A"]
 RAW_REQUESTS: list[dict[str, Any]] = [
@@ -54,6 +56,11 @@ async def tools_press_and_read() -> tuple[list[str], dict[str, Any] | None, dict
 async def fresh_state() -> dict[str, Any] | None:
     async with Client(PARAMS, raise_exceptions=True) as client:
         return (await client.call_tool("get_state")).structured_content
+
+
+async def listed_tools(params: StdioServerParameters) -> list[str]:
+    async with Client(params, raise_exceptions=True) as client:
+        return [tool.name for tool in (await client.list_tools()).tools]
 
 
 async def moved_and_untouched() -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
@@ -111,3 +118,13 @@ def test_two_servers_hold_independent_state() -> None:
     moved, untouched = asyncio.run(moved_and_untouched())
     assert moved != untouched
     assert untouched == asdict(FakeReader().read(FakeBackend()))
+
+
+def test_mcp_json_launches_a_server_that_lists_both_tools() -> None:
+    (entry,) = json.loads(MCP_JSON.read_text())["mcpServers"].values()
+    assert set(entry) == {"command", "args"}
+    assert "${" not in MCP_JSON.read_text()
+    launched = StdioServerParameters(
+        command=entry["command"], args=entry["args"], cwd=MCP_JSON.parent
+    )
+    assert sorted(asyncio.run(listed_tools(launched))) == ["get_state", "press"]
