@@ -1,4 +1,6 @@
 import asyncio
+import json
+import subprocess
 import sys
 from dataclasses import asdict
 from typing import Any, get_args
@@ -13,6 +15,31 @@ from algoarcade.games.fake import FakeReader
 PARAMS = StdioServerParameters(command=sys.executable, args=["-m", "algoarcade.agent.server"])
 # Two steps right lands on the chest, A opens it. One press call is one decision.
 TO_THE_CHEST = ["RIGHT", "RIGHT", "A"]
+RAW_REQUESTS: list[dict[str, Any]] = [
+    {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "stdout-test", "version": "0"},
+        },
+    },
+    {"jsonrpc": "2.0", "method": "notifications/initialized"},
+    {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "get_state", "arguments": {}},
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {"name": "press", "arguments": {"buttons": ["A"]}},
+    },
+]
 
 
 async def tools_press_and_read() -> tuple[list[str], dict[str, Any] | None, dict[str, Any] | None]:
@@ -43,3 +70,27 @@ def test_get_state_matches_a_fresh_read() -> None:
 
 def test_button_names_are_the_backend_enum() -> None:
     assert set(get_args(ButtonName)) == {button.name for button in Button}
+
+
+def test_only_protocol_frames_reach_stdout_and_the_log_reaches_stderr() -> None:
+    process = subprocess.Popen(
+        [sys.executable, "-m", "algoarcade.agent.server"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert process.stdin
+    assert process.stdout
+    replies = []
+    for request in RAW_REQUESTS:
+        process.stdin.write(json.dumps(request) + "\n")
+        process.stdin.flush()
+        # Reply by reply: writing them all and closing stdin ends the server mid-flight.
+        if "id" in request:
+            replies.append(process.stdout.readline())
+    rest, stderr = process.communicate(timeout=30)
+
+    assert [json.loads(line)["jsonrpc"] for line in replies] == ["2.0"] * 3
+    assert rest == ""
+    assert "press ['A']" in stderr
