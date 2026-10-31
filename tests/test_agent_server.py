@@ -15,7 +15,7 @@ from algoarcade.games.fake import FakeReader
 
 PARAMS = StdioServerParameters(command=sys.executable, args=["-m", "algoarcade.agent.server"])
 MCP_JSON = Path(__file__).parents[1] / ".mcp.json"
-# Two steps right lands on the chest, A opens it. One press call is one decision.
+# Two steps right lands on the chest, A opens it. Each button is its own decision.
 TO_THE_CHEST = ["RIGHT", "RIGHT", "A"]
 RAW_REQUESTS: list[dict[str, Any]] = [
     {
@@ -77,7 +77,8 @@ async def moved_and_untouched() -> tuple[dict[str, Any] | None, dict[str, Any] |
 def test_two_tools_and_press_matches_a_direct_backend_run() -> None:
     names, pressed, read_back = asyncio.run(tools_press_and_read())
     backend = FakeBackend()
-    backend.press([Button[name] for name in TO_THE_CHEST])
+    for name in TO_THE_CHEST:
+        backend.press([Button[name]])
     assert sorted(names) == ["get_state", "press"]
     assert pressed == read_back == asdict(FakeReader().read(backend))
 

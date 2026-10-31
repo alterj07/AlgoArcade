@@ -41,9 +41,11 @@ def get_state(context: Context[FakeBackend, Any]) -> FakeState:
 
 @mcp.tool()
 def press(buttons: list[ButtonName], context: Context[FakeBackend, Any]) -> FakeState:
-    """Press these buttons as one decision, then report the state they left behind."""
+    """Press these buttons in order, one decision each, then report the state they left behind."""
     backend = context.request_context.lifespan_context
-    backend.press([Button[name] for name in buttons])
+    # One press per button: the backend holds everything in one call down together.
+    for name in buttons:
+        backend.press([Button[name]])
     state = FakeReader().read(backend)
     logger.info("press %s -> %s", buttons, state.location)
     return state

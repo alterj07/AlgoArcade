@@ -237,7 +237,7 @@ The MCP server exposes the same harness to a language model. It uses the officia
 
 | Tool | Arguments | Returns | Level |
 |---|---|---|---|
-| press | `buttons`: a list of button names, each one of A, B, SELECT, START, RIGHT, LEFT, UP, DOWN, R, L | The GameState after the whole list, which the backend plays as one decision | L0 |
+| press | `buttons`: a list of button names, each one of A, B, SELECT, START, RIGHT, LEFT, UP, DOWN, R, L | The GameState after pressing them in order, one decision each | L0 |
 | get_state | none | The GameState | L1 |
 | navigate_to | — (AGT-04) | The state after walking to a tile on the current map by A*. Stops on a battle, dialogue or warp and says which. | L2 |
 | advance_dialogue | — (AGT-04) | The text shown, after pressing A until the box closes or a choice appears | L2 |
