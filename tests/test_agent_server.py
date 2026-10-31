@@ -2,6 +2,7 @@ import asyncio
 import json
 import subprocess
 import sys
+import threading
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, get_args
@@ -101,15 +102,23 @@ def test_only_protocol_frames_reach_stdout_and_the_log_reaches_stderr() -> None:
     )
     assert process.stdin
     assert process.stdout
+    # readline blocks with no deadline of its own, so a server that stops replying would hang
+    # the job. Killing it closes the pipe, readline returns "" and the assertion below fails.
+    watchdog = threading.Timer(30, process.kill)
+    watchdog.start()
     replies = []
-    for request in RAW_REQUESTS:
-        process.stdin.write(json.dumps(request) + "\n")
-        process.stdin.flush()
-        # Reply by reply: writing them all and closing stdin ends the server mid-flight.
-        if "id" in request:
-            replies.append(process.stdout.readline())
+    try:
+        for request in RAW_REQUESTS:
+            process.stdin.write(json.dumps(request) + "\n")
+            process.stdin.flush()
+            # Reply by reply: writing them all and closing stdin ends the server mid-flight.
+            if "id" in request:
+                replies.append(process.stdout.readline())
+    finally:
+        watchdog.cancel()
     rest, stderr = process.communicate(timeout=30)
 
+    assert "" not in replies, "the watchdog killed a server that stopped replying"
     assert [json.loads(line)["jsonrpc"] for line in replies] == ["2.0"] * 3
     assert rest == ""
     assert "press ['A']" in stderr
