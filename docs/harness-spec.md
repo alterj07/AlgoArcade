@@ -242,7 +242,7 @@ The MCP server exposes the same harness to a language model. It uses the officia
 | navigate_to | — (AGT-04) | The state after walking to a tile on the current map by A*. Stops on a battle, dialogue or warp and says which. | L2 |
 | advance_dialogue | — (AGT-04) | The text shown, after pressing A until the box closes or a choice appears | L2 |
 
-`get_state` and `press` return the GameState as structured JSON, one field per name. On the fake backend that is `room`, `x`, `y`, `chest_opened` and `frame`. Screenshots arrive with the level option in AGT-04.
+`get_state` and `press` return the GameState as structured JSON, one field per name. On the fake backend that is `room`, `x`, `y`, `chest_opened` and `frame`. The SDK sends a text copy of the same object beside it, indented two spaces by a constant no option reaches, so structured content is the compact payload a client reads. Screenshots arrive with the level option in AGT-04.
 
 A level includes every tool below it. The server takes the level as a launch option, so the same code serves all three rungs of the ladder.
 
