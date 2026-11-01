@@ -141,7 +141,7 @@ async def call_tools(client: Client, response: Message, budget: int) -> ToolRoun
                 "type": "tool_result",
                 "tool_use_id": block.id,
                 "content": tool_result_content(result),
-                "is_error": bool(result.is_error),
+                "is_error": result.is_error,
             }
         )
         if result.structured_content is not None:
